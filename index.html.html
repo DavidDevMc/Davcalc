@@ -1,0 +1,1216 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DavCalc</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Syne:wght@600;700;800&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+
+:root{
+  --bg:#0e0e0e;
+  --s1:#161616;
+  --s2:#1e1e1e;
+  --border:#2a2a2a;
+  --border2:#333;
+  --text:#f0f0ee;
+  --muted:#666;
+  --muted2:#444;
+  --accent:#e8ff47;
+  --accent-dim:rgba(232,255,71,0.12);
+  --accent-dim2:rgba(232,255,71,0.06);
+  --red:#ff4d4d;
+  --blue:#4d9fff;
+  --green:#4dff8f;
+  --radius:12px;
+}
+
+body{
+  background:var(--bg);
+  color:var(--text);
+  font-family:'DM Mono',monospace;
+  min-height:100vh;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  padding:32px 12px 60px;
+}
+
+/* ── HEADER ── */
+.app-header{
+  display:flex;
+  align-items:center;
+  gap:20px;
+  margin-bottom:28px;
+  width:100%;
+  max-width:900px;
+}
+
+.logo{
+  font-family:'Syne',sans-serif;
+  font-weight:800;
+  font-size:1.5rem;
+  letter-spacing:-0.02em;
+  color:var(--accent);
+}
+
+.logo span{color:var(--muted)}
+
+/* ── TABS ── */
+.tabs{
+  display:flex;
+  gap:2px;
+  background:var(--s1);
+  border:1px solid var(--border);
+  border-radius:10px;
+  padding:4px;
+  flex-wrap:wrap;
+}
+
+.tab-btn{
+  font-family:'DM Mono',monospace;
+  font-size:0.7rem;
+  letter-spacing:0.08em;
+  text-transform:uppercase;
+  padding:7px 16px;
+  border:none;
+  background:transparent;
+  color:var(--muted);
+  border-radius:7px;
+  cursor:pointer;
+  transition:all 0.18s;
+  white-space:nowrap;
+}
+
+.tab-btn:hover{color:var(--text);background:var(--s2)}
+.tab-btn.active{background:var(--accent);color:#000;font-weight:500}
+
+/* ── PANELS ── */
+.panel{display:none;width:100%;max-width:900px;animation:fadeIn 0.2s ease}
+.panel.active{display:block}
+@keyframes fadeIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+
+/* ══════════════════════════════════════
+   STANDARD CALCULATOR
+══════════════════════════════════════ */
+.calc-wrap{
+  max-width:360px;
+  margin:0 auto;
+}
+
+.calc-display{
+  background:var(--s1);
+  border:1px solid var(--border);
+  border-radius:var(--radius) var(--radius) 0 0;
+  padding:20px 22px 14px;
+  position:relative;
+  overflow:hidden;
+}
+
+.calc-display::after{
+  content:'';
+  position:absolute;
+  top:0;left:0;right:0;height:2px;
+  background:linear-gradient(90deg,transparent,var(--accent),transparent);
+}
+
+.calc-hist{
+  font-size:0.75rem;
+  color:var(--muted);
+  text-align:right;
+  min-height:1.2em;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+  margin-bottom:4px;
+}
+
+.calc-main{
+  font-family:'Syne',sans-serif;
+  font-weight:700;
+  font-size:clamp(2rem,8vw,3rem);
+  text-align:right;
+  line-height:1;
+  color:var(--text);
+  min-height:1.1em;
+  word-break:break-all;
+  transition:color 0.15s;
+}
+
+.calc-main.err{color:var(--red);font-size:1.3rem}
+
+.calc-grid{
+  display:grid;
+  grid-template-columns:repeat(4,1fr);
+  gap:3px;
+  background:var(--s1);
+  border:1px solid var(--border);
+  border-top:none;
+  border-radius:0 0 var(--radius) var(--radius);
+  padding:8px;
+}
+
+.cb{
+  background:var(--s2);
+  border:1px solid var(--border);
+  border-radius:8px;
+  color:var(--text);
+  font-family:'DM Mono',monospace;
+  font-size:1rem;
+  padding:16px 4px;
+  cursor:pointer;
+  transition:all 0.12s;
+  user-select:none;
+}
+
+.cb:hover{background:var(--border2);border-color:var(--muted2)}
+.cb:active{transform:scale(0.96);opacity:0.7}
+.cb.op{color:var(--accent);background:var(--accent-dim2)}
+.cb.op:hover{background:var(--accent-dim)}
+.cb.ac{color:var(--red);background:rgba(255,77,77,0.06)}
+.cb.ac:hover{background:rgba(255,77,77,0.12)}
+.cb.eq{background:var(--accent);color:#000;font-family:'Syne',sans-serif;font-weight:700;font-size:1.2rem}
+.cb.eq:hover{background:#d4eb3c}
+.cb.span2{grid-column:span 2}
+.cb.span3{grid-column:span 3}
+
+/* ══════════════════════════════════════
+   AI SOLVER
+══════════════════════════════════════ */
+.solver-wrap{max-width:640px;margin:0 auto}
+
+.solver-input-row{
+  display:flex;
+  background:var(--s1);
+  border:1.5px solid var(--border);
+  border-radius:var(--radius);
+  overflow:hidden;
+  transition:border-color 0.2s;
+  margin-bottom:10px;
+}
+
+.solver-input-row:focus-within{border-color:var(--accent)}
+
+#eq-input{
+  flex:1;
+  background:transparent;
+  border:none;
+  outline:none;
+  font-family:'DM Mono',monospace;
+  font-size:1rem;
+  color:var(--text);
+  padding:15px 18px;
+}
+
+#eq-input::placeholder{color:var(--muted)}
+
+#solve-btn{
+  background:var(--accent);
+  color:#000;
+  border:none;
+  font-family:'Syne',sans-serif;
+  font-weight:700;
+  font-size:0.75rem;
+  letter-spacing:0.1em;
+  padding:0 22px;
+  cursor:pointer;
+  transition:opacity 0.15s;
+  white-space:nowrap;
+}
+
+#solve-btn:hover{opacity:0.85}
+
+.examples{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:20px}
+
+.chip{
+  background:var(--s1);
+  border:1px solid var(--border);
+  border-radius:6px;
+  padding:4px 10px;
+  font-size:0.7rem;
+  color:var(--muted);
+  cursor:pointer;
+  transition:all 0.15s;
+}
+
+.chip:hover{border-color:var(--accent);color:var(--accent)}
+
+/* Result */
+.result-card{
+  background:var(--s1);
+  border:1px solid var(--border);
+  border-radius:var(--radius);
+  overflow:hidden;
+  animation:fadeIn 0.25s ease;
+  margin-bottom:12px;
+}
+
+.result-head{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  padding:12px 18px;
+  border-bottom:1px solid var(--border);
+  background:var(--s2);
+}
+
+.result-label{font-size:0.62rem;letter-spacing:0.14em;text-transform:uppercase;color:var(--muted)}
+
+.badge{font-size:0.65rem;padding:3px 10px;border-radius:20px;letter-spacing:0.05em}
+.badge-ok{background:rgba(77,255,143,0.1);color:var(--green)}
+.badge-err{background:rgba(255,77,77,0.1);color:var(--red)}
+
+.result-body{padding:18px}
+
+.final-ans{
+  font-family:'Syne',sans-serif;
+  font-weight:700;
+  font-size:clamp(1.4rem,5vw,2rem);
+  letter-spacing:-0.02em;
+  margin-bottom:20px;
+  line-height:1.2;
+}
+
+.final-ans.err-ans{color:var(--red);font-size:1rem;font-family:'DM Mono',monospace;font-weight:400}
+
+.steps-lbl{font-size:0.6rem;letter-spacing:0.18em;text-transform:uppercase;color:var(--muted);margin-bottom:12px}
+
+.step{display:flex;gap:12px;position:relative}
+.step:not(:last-child)::before{content:'';position:absolute;left:11px;top:26px;bottom:-6px;width:1px;background:var(--border)}
+.step-num{
+  width:24px;height:24px;border-radius:50%;
+  background:var(--s2);border:1px solid var(--border);
+  display:flex;align-items:center;justify-content:center;
+  font-size:0.62rem;color:var(--muted);flex-shrink:0;margin-top:2px;
+}
+.step-body{padding-bottom:16px;flex:1}
+.step-ttl{font-size:0.65rem;color:var(--muted);letter-spacing:0.08em;text-transform:uppercase;margin-bottom:2px}
+.step-math{font-size:0.9rem;color:var(--text);line-height:1.6}
+
+.empty-solver{
+  text-align:center;
+  padding:48px 0;
+  color:var(--muted);
+  font-size:0.78rem;
+  line-height:2;
+}
+.empty-solver big{
+  font-family:'Syne',sans-serif;
+  font-size:3.5rem;
+  font-weight:800;
+  display:block;
+  color:var(--border2);
+  margin-bottom:8px;
+}
+
+.hist-strip{display:flex;flex-direction:column;gap:6px;margin-top:8px}
+.hist-item{
+  background:var(--s1);border:1px solid var(--border);
+  border-radius:8px;padding:9px 14px;
+  display:flex;justify-content:space-between;align-items:center;
+  cursor:pointer;transition:border-color 0.15s;
+}
+.hist-item:hover{border-color:var(--accent)}
+.hist-eq{font-size:0.78rem;color:var(--muted)}
+.hist-ans{font-family:'Syne',sans-serif;font-weight:700;font-size:0.85rem;color:var(--accent)}
+
+/* ══════════════════════════════════════
+   VOLUME CALCULATOR
+══════════════════════════════════════ */
+.vol-wrap{max-width:640px;margin:0 auto}
+
+.vol-grid{
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(180px,1fr));
+  gap:10px;
+  margin-bottom:16px;
+}
+
+.vol-shape{
+  background:var(--s1);
+  border:1.5px solid var(--border);
+  border-radius:var(--radius);
+  padding:16px;
+  cursor:pointer;
+  transition:all 0.18s;
+  text-align:center;
+}
+
+.vol-shape:hover{border-color:var(--muted2)}
+.vol-shape.sel{border-color:var(--accent);background:var(--accent-dim2)}
+
+.vol-icon{font-size:2rem;margin-bottom:6px}
+.vol-name{font-family:'Syne',sans-serif;font-weight:700;font-size:0.8rem;color:var(--text)}
+.vol-formula{font-size:0.62rem;color:var(--muted);margin-top:2px}
+
+.vol-inputs{
+  background:var(--s1);
+  border:1px solid var(--border);
+  border-radius:var(--radius);
+  padding:20px;
+  margin-bottom:12px;
+}
+
+.vol-fields{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-bottom:16px}
+
+.field-group label{
+  display:block;
+  font-size:0.62rem;
+  letter-spacing:0.12em;
+  text-transform:uppercase;
+  color:var(--muted);
+  margin-bottom:5px;
+}
+
+.field-input{
+  width:100%;
+  background:var(--s2);
+  border:1px solid var(--border);
+  border-radius:7px;
+  color:var(--text);
+  font-family:'DM Mono',monospace;
+  font-size:0.95rem;
+  padding:9px 12px;
+  outline:none;
+  transition:border-color 0.2s;
+}
+.field-input:focus{border-color:var(--accent)}
+
+.vol-result{
+  background:var(--s2);
+  border:1px solid var(--border);
+  border-radius:8px;
+  padding:14px 16px;
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+}
+
+.vol-res-lbl{font-size:0.62rem;letter-spacing:0.12em;text-transform:uppercase;color:var(--muted)}
+.vol-res-val{font-family:'Syne',sans-serif;font-weight:700;font-size:1.4rem;color:var(--accent)}
+
+.btn-calc{
+  background:var(--accent);
+  color:#000;
+  border:none;
+  border-radius:8px;
+  font-family:'Syne',sans-serif;
+  font-weight:700;
+  font-size:0.78rem;
+  letter-spacing:0.1em;
+  padding:11px 20px;
+  cursor:pointer;
+  transition:opacity 0.15s;
+}
+.btn-calc:hover{opacity:0.85}
+
+/* ══════════════════════════════════════
+   CONVERTER
+══════════════════════════════════════ */
+.conv-wrap{max-width:640px;margin:0 auto}
+
+.conv-cats{
+  display:flex;
+  flex-wrap:wrap;
+  gap:5px;
+  margin-bottom:18px;
+}
+
+.cat-btn{
+  background:var(--s1);
+  border:1px solid var(--border);
+  border-radius:7px;
+  padding:5px 12px;
+  font-family:'DM Mono',monospace;
+  font-size:0.68rem;
+  color:var(--muted);
+  cursor:pointer;
+  transition:all 0.15s;
+  letter-spacing:0.05em;
+}
+.cat-btn:hover{color:var(--text);border-color:var(--muted2)}
+.cat-btn.active{background:var(--accent-dim);border-color:var(--accent);color:var(--accent)}
+
+.conv-card{
+  background:var(--s1);
+  border:1px solid var(--border);
+  border-radius:var(--radius);
+  padding:22px;
+}
+
+.conv-row{
+  display:grid;
+  grid-template-columns:1fr 40px 1fr;
+  gap:10px;
+  align-items:end;
+  margin-bottom:14px;
+}
+
+.conv-col label{
+  display:block;
+  font-size:0.62rem;
+  letter-spacing:0.12em;
+  text-transform:uppercase;
+  color:var(--muted);
+  margin-bottom:5px;
+}
+
+.conv-sel,.conv-val{
+  width:100%;
+  background:var(--s2);
+  border:1px solid var(--border);
+  border-radius:7px;
+  color:var(--text);
+  font-family:'DM Mono',monospace;
+  font-size:0.9rem;
+  padding:9px 12px;
+  outline:none;
+  transition:border-color 0.2s;
+  margin-bottom:6px;
+}
+.conv-sel:focus,.conv-val:focus{border-color:var(--accent)}
+
+.conv-arrow{
+  font-size:1.4rem;
+  color:var(--muted);
+  text-align:center;
+  padding-bottom:12px;
+}
+
+.conv-output{
+  background:var(--s2);
+  border:1px solid var(--border);
+  border-radius:7px;
+  padding:9px 12px;
+  font-family:'Syne',sans-serif;
+  font-weight:700;
+  font-size:1.05rem;
+  color:var(--accent);
+  min-height:38px;
+  word-break:break-all;
+}
+
+.btn-convert{
+  background:var(--accent);
+  color:#000;
+  border:none;
+  border-radius:8px;
+  font-family:'Syne',sans-serif;
+  font-weight:700;
+  font-size:0.78rem;
+  letter-spacing:0.1em;
+  padding:11px 24px;
+  cursor:pointer;
+  transition:opacity 0.15s;
+}
+.btn-convert:hover{opacity:0.85}
+
+.conv-formula{
+  font-size:0.68rem;
+  color:var(--muted);
+  margin-top:10px;
+  line-height:1.6;
+}
+
+/* section titles */
+.section-title{
+  font-family:'Syne',sans-serif;
+  font-weight:700;
+  font-size:0.72rem;
+  letter-spacing:0.14em;
+  text-transform:uppercase;
+  color:var(--muted);
+  margin-bottom:14px;
+}
+
+/* swap btn */
+.swap-btn{
+  background:var(--s2);
+  border:1px solid var(--border);
+  border-radius:6px;
+  color:var(--muted);
+  font-size:0.8rem;
+  padding:4px 8px;
+  cursor:pointer;
+  transition:all 0.15s;
+  margin-left:8px;
+}
+.swap-btn:hover{border-color:var(--accent);color:var(--accent)}
+</style>
+</head>
+<body>
+
+<div class="app-header">
+  <div class="logo">DavCalc<span> ·</span></div>
+  <div class="tabs">
+    <button class="tab-btn active" onclick="switchTab('calc')">Calculator</button>
+    <button class="tab-btn" onclick="switchTab('solver')">AI Solver</button>
+    <button class="tab-btn" onclick="switchTab('volume')">Volume</button>
+    <button class="tab-btn" onclick="switchTab('converter')">Converter</button>
+  </div>
+</div>
+
+<!-- ═══════════════ STANDARD CALCULATOR ═══════════════ -->
+<div class="panel active" id="tab-calc">
+  <div class="calc-wrap">
+    <div class="calc-display">
+      <div class="calc-hist" id="c-hist"></div>
+      <div class="calc-main" id="c-main">0</div>
+    </div>
+    <div class="calc-grid">
+      <button class="cb ac span2" onclick="cClear()">AC</button>
+      <button class="cb op" onclick="cSign()">+/−</button>
+      <button class="cb op" onclick="cOp('%')">%</button>
+
+      <button class="cb" onclick="cNum('7')">7</button>
+      <button class="cb" onclick="cNum('8')">8</button>
+      <button class="cb" onclick="cNum('9')">9</button>
+      <button class="cb op" onclick="cOp('/')">÷</button>
+
+      <button class="cb" onclick="cNum('4')">4</button>
+      <button class="cb" onclick="cNum('5')">5</button>
+      <button class="cb" onclick="cNum('6')">6</button>
+      <button class="cb op" onclick="cOp('*')">×</button>
+
+      <button class="cb" onclick="cNum('1')">1</button>
+      <button class="cb" onclick="cNum('2')">2</button>
+      <button class="cb" onclick="cNum('3')">3</button>
+      <button class="cb op" onclick="cOp('-')">−</button>
+
+      <button class="cb span2" onclick="cNum('0')">0</button>
+      <button class="cb" onclick="cDot()">.</button>
+      <button class="cb op" onclick="cOp('+')">+</button>
+
+      <button class="cb eq span3" onclick="cCalc()">=</button>
+      <button class="cb op" onclick="cBack()">⌫</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════ AI SOLVER ═══════════════ -->
+<div class="panel" id="tab-solver">
+  <div class="solver-wrap">
+    <div class="solver-input-row">
+      <input id="eq-input" type="text" placeholder="e.g.  2x + 5 = 13  or  x^2 - 4 = 0" autocomplete="off" spellcheck="false">
+      <button id="solve-btn" onclick="handleSolve()">SOLVE →</button>
+    </div>
+    <div class="examples">
+      <span class="chip" onclick="useEx(this)">2x + 5 = 13</span>
+      <span class="chip" onclick="useEx(this)">x^2 - 4x + 4 = 0</span>
+      <span class="chip" onclick="useEx(this)">3x - 7 = 2x + 1</span>
+      <span class="chip" onclick="useEx(this)">x^2 + x - 6 = 0</span>
+      <span class="chip" onclick="useEx(this)">5(x - 2) = 15</span>
+      <span class="chip" onclick="useEx(this)">x^3 - 8 = 0</span>
+      <span class="chip" onclick="useEx(this)">(x+3)(x-2) = 0</span>
+      <span class="chip" onclick="useEx(this)">2x^2 + 3x - 5 = 0</span>
+    </div>
+    <div id="solver-out">
+      <div class="empty-solver">
+        <big>∑</big>
+        Type any equation with x, y, or z<br>
+        and get a full step-by-step solution.
+      </div>
+    </div>
+    <div id="sol-hist-strip" class="hist-strip"></div>
+  </div>
+</div>
+
+<!-- ═══════════════ VOLUME ═══════════════ -->
+<div class="panel" id="tab-volume">
+  <div class="vol-wrap">
+    <div class="section-title">Select a Shape</div>
+    <div class="vol-grid">
+      <div class="vol-shape sel" onclick="selShape('sphere')" id="vs-sphere">
+        <div class="vol-icon">●</div>
+        <div class="vol-name">Sphere</div>
+        <div class="vol-formula">4/3 π r³</div>
+      </div>
+      <div class="vol-shape" onclick="selShape('cylinder')" id="vs-cylinder">
+        <div class="vol-icon">⬤</div>
+        <div class="vol-name">Cylinder</div>
+        <div class="vol-formula">π r² h</div>
+      </div>
+      <div class="vol-shape" onclick="selShape('cube')" id="vs-cube">
+        <div class="vol-icon">■</div>
+        <div class="vol-name">Cube</div>
+        <div class="vol-formula">a³</div>
+      </div>
+      <div class="vol-shape" onclick="selShape('box')" id="vs-box">
+        <div class="vol-icon">▬</div>
+        <div class="vol-name">Rectangular Box</div>
+        <div class="vol-formula">l × w × h</div>
+      </div>
+      <div class="vol-shape" onclick="selShape('cone')" id="vs-cone">
+        <div class="vol-icon">▲</div>
+        <div class="vol-name">Cone</div>
+        <div class="vol-formula">1/3 π r² h</div>
+      </div>
+      <div class="vol-shape" onclick="selShape('pyramid')" id="vs-pyramid">
+        <div class="vol-icon">△</div>
+        <div class="vol-name">Pyramid</div>
+        <div class="vol-formula">1/3 b² h</div>
+      </div>
+      <div class="vol-shape" onclick="selShape('ellipsoid')" id="vs-ellipsoid">
+        <div class="vol-icon">◉</div>
+        <div class="vol-name">Ellipsoid</div>
+        <div class="vol-formula">4/3 π abc</div>
+      </div>
+      <div class="vol-shape" onclick="selShape('torus')" id="vs-torus">
+        <div class="vol-icon">◎</div>
+        <div class="vol-name">Torus</div>
+        <div class="vol-formula">2π² Rr²</div>
+      </div>
+    </div>
+
+    <div class="vol-inputs">
+      <div class="vol-fields" id="vol-fields"></div>
+      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">
+        <div class="vol-result">
+          <div>
+            <div class="vol-res-lbl">Volume</div>
+            <div class="vol-res-val" id="vol-out">—</div>
+          </div>
+          <div style="text-align:right">
+            <div class="vol-res-lbl">Surface Area</div>
+            <div class="vol-res-val" id="sa-out" style="font-size:1rem">—</div>
+          </div>
+        </div>
+        <button class="btn-calc" onclick="calcVol()">CALCULATE</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════ CONVERTER ═══════════════ -->
+<div class="panel" id="tab-converter">
+  <div class="conv-wrap">
+    <div class="section-title">Category</div>
+    <div class="conv-cats">
+      <button class="cat-btn active" onclick="selectCat('length',this)">Length</button>
+      <button class="cat-btn" onclick="selectCat('weight',this)">Weight</button>
+      <button class="cat-btn" onclick="selectCat('temperature',this)">Temperature</button>
+      <button class="cat-btn" onclick="selectCat('area',this)">Area</button>
+      <button class="cat-btn" onclick="selectCat('volume_u',this)">Volume</button>
+      <button class="cat-btn" onclick="selectCat('speed',this)">Speed</button>
+      <button class="cat-btn" onclick="selectCat('time',this)">Time</button>
+      <button class="cat-btn" onclick="selectCat('data',this)">Data</button>
+      <button class="cat-btn" onclick="selectCat('energy',this)">Energy</button>
+      <button class="cat-btn" onclick="selectCat('pressure',this)">Pressure</button>
+      <button class="cat-btn" onclick="selectCat('angle',this)">Angle</button>
+    </div>
+
+    <div class="conv-card">
+      <div class="conv-row">
+        <div class="conv-col">
+          <label>From</label>
+          <select class="conv-sel" id="conv-from"></select>
+          <input class="conv-val" type="number" id="conv-val" value="1" placeholder="Enter value">
+        </div>
+        <div class="conv-arrow">→</div>
+        <div class="conv-col">
+          <label>To <button class="swap-btn" onclick="swapConv()" title="Swap units">⇄</button></label>
+          <select class="conv-sel" id="conv-to"></select>
+          <div class="conv-output" id="conv-out">—</div>
+        </div>
+      </div>
+      <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+        <button class="btn-convert" onclick="doConvert()">CONVERT</button>
+        <div class="conv-formula" id="conv-formula"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ══════════════════════════════════════════════
+// TABS
+// ══════════════════════════════════════════════
+function switchTab(id){
+  document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+  document.getElementById('tab-'+id).classList.add('active');
+  event.currentTarget.classList.add('active');
+}
+
+// ══════════════════════════════════════════════
+// STANDARD CALCULATOR
+// ══════════════════════════════════════════════
+let cDisp='0',cHist='',cPrev=null,cOpr=null,cWait=false;
+
+function cUpdate(){
+  const el=document.getElementById('c-main');
+  el.textContent=cDisp;
+  el.className='calc-main'+(cDisp==='Error'?' err':'');
+  document.getElementById('c-hist').textContent=cHist;
+}
+function cNum(n){
+  if(cWait){cDisp=n;cWait=false;}
+  else cDisp=cDisp==='0'?n:cDisp+n;
+  cUpdate();
+}
+function cDot(){
+  if(cWait){cDisp='0.';cWait=false;cUpdate();return;}
+  if(!cDisp.includes('.'))cDisp+='.';
+  cUpdate();
+}
+function cOp(op){
+  if(cDisp==='Error')return;
+  const sym={'+':'+','-':'−','*':'×','/':'÷','%':'%'};
+  if(cOpr&&!cWait)cCompute();
+  cPrev=parseFloat(cDisp);cOpr=op;
+  cHist=cDisp+' '+(sym[op]||op);cWait=true;cUpdate();
+}
+function cCompute(){
+  if(!cOpr||cPrev===null)return;
+  let cur=parseFloat(cDisp),res;
+  switch(cOpr){
+    case'+':res=cPrev+cur;break;
+    case'-':res=cPrev-cur;break;
+    case'*':res=cPrev*cur;break;
+    case'/':res=cur===0?'Error':cPrev/cur;break;
+    case'%':res=cPrev%cur;break;
+    default:return;
+  }
+  return res;
+}
+function cCalc(){
+  if(!cOpr)return;
+  const r=cCompute();
+  cHist=cHist+' '+cDisp;
+  cDisp=r==='Error'?'Error':cFmt(r);
+  cOpr=null;cPrev=null;cWait=true;cUpdate();
+}
+function cClear(){cDisp='0';cHist='';cPrev=null;cOpr=null;cWait=false;cUpdate();}
+function cBack(){
+  if(cWait||cDisp==='Error'){cClear();return;}
+  cDisp=cDisp.length>1?cDisp.slice(0,-1):'0';cUpdate();
+}
+function cSign(){
+  if(cDisp!=='0'&&cDisp!=='Error'){
+    cDisp=cDisp.startsWith('-')?cDisp.slice(1):'-'+cDisp;cUpdate();
+  }
+}
+function cFmt(n){
+  if(!isFinite(n))return'Error';
+  return String(parseFloat(n.toPrecision(12)));
+}
+document.addEventListener('keydown',e=>{
+  if(document.getElementById('tab-calc').classList.contains('active')){
+    if('0123456789'.includes(e.key))cNum(e.key);
+    else if(e.key==='.')cDot();
+    else if(e.key==='+')cOp('+');
+    else if(e.key==='-')cOp('-');
+    else if(e.key==='*')cOp('*');
+    else if(e.key==='/')e.preventDefault(),cOp('/');
+    else if(e.key==='Enter'||e.key==='=')cCalc();
+    else if(e.key==='Backspace')cBack();
+    else if(e.key==='Escape')cClear();
+  }
+});
+
+// ══════════════════════════════════════════════
+// AI SOLVER
+// ══════════════════════════════════════════════
+const solHistory=[];
+
+function useEx(el){document.getElementById('eq-input').value=el.textContent;handleSolve();}
+document.addEventListener('DOMContentLoaded',()=>{
+  document.getElementById('eq-input').addEventListener('keydown',e=>{if(e.key==='Enter')handleSolve();});
+});
+
+function handleSolve(){
+  const raw=document.getElementById('eq-input').value.trim();
+  if(!raw)return;
+  document.getElementById('solver-out').innerHTML=`<div class="result-card"><div style="padding:18px;color:var(--muted);font-size:0.85rem;display:flex;gap:8px;align-items:center"><span style="display:inline-flex;gap:4px"><span style="width:5px;height:5px;border-radius:50%;background:var(--muted);animation:bounce 1.1s infinite"></span><span style="width:5px;height:5px;border-radius:50%;background:var(--muted);animation:bounce 1.1s 0.2s infinite"></span><span style="width:5px;height:5px;border-radius:50%;background:var(--muted);animation:bounce 1.1s 0.4s infinite"></span></span> Solving…</div></div>`;
+  setTimeout(()=>{const r=sSolve(raw);sRender(raw,r);},380);
+}
+
+function isMath(s){
+  const wc=s.split(/\s+/).filter(w=>/^[a-z]+$/i.test(w)&&w.length>2).length;
+  const mc=(s.match(/[0-9x-z=+\-*\/\^().]/ig)||[]).length;
+  if(/^[a-z\s,!?'"]+$/i.test(s)&&!/[xyz]/i.test(s))return false;
+  if(wc>=3&&mc<3)return false;
+  return /[0-9x y z\^=+\-*/().]/i.test(s);
+}
+
+function sSolve(input){
+  if(!isMath(input))return{type:'ERROR',error:'Input must be a mathematical equation.\nOnly x, y, z variables accepted.'};
+  const clean=input.trim();
+  if(clean.includes('=')){
+    const idx=clean.indexOf('=');
+    const lhs=clean.slice(0,idx).trim(),rhs=clean.slice(idx+1).trim();
+    const vars=[...new Set([...clean.toLowerCase()].filter(c=>'xyz'.includes(c)))];
+    if(!vars.length)return sEvalBoth(lhs,rhs);
+    const deg=sDeg(clean);
+    if(deg===1&&vars.length===1)return sLinear(lhs,rhs,vars[0],clean);
+    if(deg===2&&vars.length===1)return sQuad(lhs,rhs,vars[0],clean);
+    if(deg===3&&vars.length===1)return sCubic(lhs,rhs,vars[0],clean);
+    if(vars.length>=2)return{type:'ERROR',error:'Multi-variable systems need two equations.\nEnter a single-variable equation.'};
+    return{type:'ERROR',error:'Could not identify equation type.'};
+  }
+  return sEvalExpr(clean);
+}
+
+function sDeg(s){
+  const t=s.replace(/\s/g,'');
+  if(/x\^3|\bx{3}/i.test(t))return 3;
+  if(/x\^2|x\*x|\bx{2}/i.test(t))return 2;
+  return 1;
+}
+
+function sLinear(lhs,rhs,v,orig){
+  const steps=[];
+  steps.push({t:'Original equation',m:`${lhs} = ${rhs}`});
+  const L=sPoly1(lhs,v),R=sPoly1(rhs,v);
+  if(!L||!R)return{type:'ERROR',error:`Cannot parse: "${orig}"`};
+  steps.push({t:'Identify terms',m:`Left side: ${sPolyStr1(L,v)}  ·  Right side: ${sPolyStr1(R,v)}`});
+  const a=L.a-R.a,b=R.b-L.b;
+  steps.push({t:`Move ${v}-terms left, constants right`,m:`${sFmtC(a)}${v} = ${sFmt(b)}`});
+  if(a===0){return{type:'LINEAR',steps,answer:b===0?'All real numbers (identity)':'No solution (contradiction)',varName:v};}
+  const x=b/a;
+  steps.push({t:`Divide both sides by ${sFmt(a)}`,m:`${v} = ${sFmt(b)} ÷ ${sFmt(a)}`});
+  steps.push({t:'Result',m:`${v} = ${sFmt(x)}`});
+  steps.push({t:'Verify',m:`Substitute ${v}=${sFmt(x)}: ${sFmt(L.a*x+L.b)} = ${sFmt(R.a*x+R.b)} ✓`});
+  return{type:'LINEAR',steps,answer:`${v} = ${sFmt(x)}`,varName:v};
+}
+
+function sQuad(lhs,rhs,v,orig){
+  const steps=[];
+  steps.push({t:'Original equation',m:`${lhs} = ${rhs}`});
+  const L=sPoly2(lhs,v),R=sPoly2(rhs,v);
+  if(!L||!R)return{type:'ERROR',error:`Cannot parse: "${orig}"`};
+  const a=L.a2-R.a2,b=L.a1-R.a1,c=L.a0-R.a0;
+  steps.push({t:'Standard form (move all terms to left)',m:`${sPoly2Str(a,b,c,v)} = 0`});
+  steps.push({t:'Identify coefficients',m:`a = ${sFmt(a)},  b = ${sFmt(b)},  c = ${sFmt(c)}`});
+  const fac=sTryFactor(a,b,c,v);
+  if(fac){
+    steps.push({t:'Factor the expression',m:fac.expr});
+    steps.push({t:'Apply zero-product property',m:fac.roots.map(r=>`${v} = ${sFmt(r)}`).join('  or  ')});
+    return{type:'QUADRATIC',steps,answer:fac.roots.map(r=>`${v} = ${sFmt(r)}`).join('  or  '),varName:v};
+  }
+  steps.push({t:'Apply quadratic formula',m:`${v} = (−b ± √(b²−4ac)) / 2a`});
+  const disc=b*b-4*a*c;
+  steps.push({t:'Calculate discriminant Δ',m:`Δ = (${sFmt(b)})² − 4(${sFmt(a)})(${sFmt(c)}) = ${sFmt(disc)}`});
+  let ans;
+  if(disc>0){
+    const x1=(-b+Math.sqrt(disc))/(2*a),x2=(-b-Math.sqrt(disc))/(2*a);
+    steps.push({t:'Two real roots (Δ > 0)',m:`${v}₁ = ${sFmt(x1)}\n${v}₂ = ${sFmt(x2)}`});
+    ans=`${v}₁ = ${sFmt(x1)},  ${v}₂ = ${sFmt(x2)}`;
+  }else if(disc===0){
+    const x=-b/(2*a);
+    steps.push({t:'One repeated root (Δ = 0)',m:`${v} = ${sFmt(x)}`});
+    ans=`${v} = ${sFmt(x)} (double root)`;
+  }else{
+    const re=-b/(2*a),im=Math.sqrt(-disc)/(2*a);
+    steps.push({t:'Complex roots (Δ < 0)',m:`${v}₁ = ${sFmt(re)} + ${sFmt(im)}i\n${v}₂ = ${sFmt(re)} − ${sFmt(im)}i`});
+    ans=`${v}₁ = ${sFmt(re)} + ${sFmt(im)}i,  ${v}₂ = ${sFmt(re)} − ${sFmt(im)}i`;
+  }
+  return{type:'QUADRATIC',steps,answer:ans,varName:v};
+}
+
+function sCubic(lhs,rhs,v,orig){
+  const steps=[];
+  steps.push({t:'Original equation',m:`${lhs} = ${rhs}`});
+  const L=sPoly3(lhs,v),R=sPoly3(rhs,v);
+  if(!L||!R)return{type:'ERROR',error:`Cannot parse: "${orig}"`};
+  const a=L.a3-R.a3,b=L.a2-R.a2,c=L.a1-R.a1,d=L.a0-R.a0;
+  steps.push({t:'Standard form',m:`${sPoly3Str(a,b,c,d,v)} = 0`});
+  steps.push({t:'Coefficients',m:`a=${sFmt(a)}, b=${sFmt(b)}, c=${sFmt(c)}, d=${sFmt(d)}`});
+  const roots=sCubicNum(a,b,c,d);
+  steps.push({t:'Solve numerically (Newton–Raphson method)',m:roots.map((r,i)=>`${v}${i+1} ≈ ${r}`).join('\n')});
+  return{type:'CUBIC',steps,answer:roots.map((r,i)=>`${v}${i+1} ≈ ${r}`).join(',  '),varName:v};
+}
+
+function sEvalBoth(lhs,rhs){
+  const ev=s=>{try{return Function('"use strict";return('+s.replace(/\^/g,'**')+')')();}catch{return null;}};
+  const l=ev(lhs),r=ev(rhs);
+  if(l===null||r===null)return{type:'ERROR',error:'Cannot evaluate expression.'};
+  const eq=Math.abs(l-r)<1e-10;
+  return{type:'VERIFY',steps:[
+    {t:'Evaluate left side',m:`${lhs} = ${sFmt(l)}`},
+    {t:'Evaluate right side',m:`${rhs} = ${sFmt(r)}`},
+    {t:'Conclusion',m:eq?`${sFmt(l)} = ${sFmt(r)} ✓  TRUE`:`${sFmt(l)} ≠ ${sFmt(r)}  FALSE`}
+  ],answer:eq?'TRUE':'FALSE'};
+}
+
+function sEvalExpr(expr){
+  const safe=expr.replace(/\^/g,'**').replace(/[^0-9+\-*/().\s]/g,'');
+  try{const r=Function('"use strict";return('+safe+')')();
+    return{type:'EXPRESSION',steps:[{t:'Expression',m:expr},{t:'Result',m:`= ${sFmt(r)}`}],answer:sFmt(r)};}
+  catch{return{type:'ERROR',error:'Cannot evaluate expression.'};}
+}
+
+// Polynomial parsers
+function sExpandP(s,v){
+  s=s.replace(/([+-]?\d*\.?\d*)\(([^)]+)\)/g,(_,k,inner)=>{
+    const kv=parseFloat(k||'1')||1;
+    return sTerms(inner).map(t=>{
+      if(t.includes(v)){const c=sCf(t.replace(v,'')||'1');return sFmt(kv*c)+v;}
+      return sFmt(kv*(parseFloat(t)||0));
+    }).join('');
+  });
+  s=s.replace(/\(([^)]+)\)\(([^)]+)\)/g,(_,a,b)=>{
+    const aT=sTerms(a),bT=sTerms(b);let res='';
+    for(const ta of aT)for(const tb of bT){
+      const va=ta.includes(v),vb=tb.includes(v);
+      if(va&&vb){const ca=sCf(ta.replace(v,'')||'1'),cb=sCf(tb.replace(v,'')||'1');res+=sFmt(ca*cb)+v+'^2';}
+      else if(va){const ca=sCf(ta.replace(v,'')||'1'),nb=parseFloat(tb)||0;res+=sFmt(ca*nb)+v;}
+      else if(vb){const cb=sCf(tb.replace(v,'')||'1'),na=parseFloat(ta)||0;res+=sFmt(cb*na)+v;}
+      else res+=sFmt((parseFloat(ta)||0)*(parseFloat(tb)||0));
+    }
+    return res;
+  });
+  return s;
+}
+function sTerms(s){const ts=[];let c='';for(let i=0;i<s.length;i++){const ch=s[i];if((ch==='+'||ch==='-')&&i>0){if(c)ts.push(c);c=ch;}else c+=ch;}if(c)ts.push(c);return ts.filter(t=>t&&t!=='+'&&t!=='-');}
+function sCf(s){if(s===''||s==='+')return 1;if(s==='-')return-1;const v=parseFloat(s);return isNaN(v)?1:v;}
+
+function sPoly1(expr,v){
+  let s=expr.replace(/\s/g,'').toLowerCase();
+  s=sExpandP(s,v);
+  let a=0,b=0;
+  for(const t of sTerms(s)){
+    if(t.includes(v)){a+=sCf(t.replace(v,'')||'1');}
+    else b+=parseFloat(t)||0;
+  }
+  return{a,b};
+}
+
+function sPoly2(expr,v){
+  let s=expr.replace(/\s/g,'').toLowerCase();
+  s=sExpandP(s,v);
+  let a2=0,a1=0,a0=0;
+  for(const t of sTerms(s)){
+    if(t.includes(v+'^2')){a2+=sCf(t.replace(v+'^2','')||'1');}
+    else if(t.includes(v)){a1+=sCf(t.replace(v,'')||'1');}
+    else a0+=parseFloat(t)||0;
+  }
+  return{a2,a1,a0};
+}
+
+function sPoly3(expr,v){
+  let s=expr.replace(/\s/g,'').toLowerCase();
+  s=sExpandP(s,v);
+  let a3=0,a2=0,a1=0,a0=0;
+  for(const t of sTerms(s)){
+    if(t.includes(v+'^3')){a3+=sCf(t.replace(v+'^3','')||'1');}
+    else if(t.includes(v+'^2')){a2+=sCf(t.replace(v+'^2','')||'1');}
+    else if(t.includes(v)){a1+=sCf(t.replace(v,'')||'1');}
+    else a0+=parseFloat(t)||0;
+  }
+  return{a3,a2,a1,a0};
+}
+
+function sTryFactor(a,b,c,v){
+  const nc=Math.abs(c||0)+2;
+  const candidates=[];
+  for(let p=1;p<=nc;p++)for(let q=1;q<=Math.abs(a)+1;q++)
+    for(const sp of[1,-1])for(const sq of[1,-1]){
+      const r=sp*p/(sq*q);
+      if(Math.abs(a*r*r+b*r+c)<1e-9)candidates.push(r);
+    }
+  const uniq=[...new Set(candidates.map(x=>Math.round(x*1e9)/1e9))];
+  if(uniq.length>=2){
+    const r1=uniq[0],r2=uniq[1];
+    return{expr:`${a!==1?sFmt(a):''}(${v} ${r1<0?'+ '+sFmt(-r1):'− '+sFmt(r1)})(${v} ${r2<0?'+ '+sFmt(-r2):'− '+sFmt(r2)}) = 0`,roots:[r1,r2]};
+  }
+  if(uniq.length===1)return{expr:`(${v} − ${sFmt(uniq[0])})² = 0`,roots:[uniq[0],uniq[0]]};
+  return null;
+}
+
+function sCubicNum(a,b,c,d){
+  const roots=[];let poly=[a,b,c,d];
+  for(let att=0;att<3;att++){
+    let x=(Math.random()-0.5)*10;
+    for(let i=0;i<300;i++){
+      const[pa,pb,pc,pd]=poly;
+      const fx=pa*x**3+pb*x**2+pc*x+pd;
+      const fpx=3*pa*x**2+2*pb*x+pc;
+      if(Math.abs(fpx)<1e-14){x+=0.3;continue;}
+      const dx=fx/fpx;x-=dx;
+      if(Math.abs(dx)<1e-11)break;
+    }
+    const xr=Math.round(x*1e8)/1e8;roots.push(sFmt(xr));
+    const nb=poly[1]+poly[0]*x,nc=poly[2]+nb*x;
+    poly=[poly[0],nb,nc,0];
+  }
+  return roots;
+}
+
+// Formatters
+function sFmt(n){if(!isFinite(n))return'undefined';const r=Math.round(n*1e10)/1e10;return r%1===0?String(r):String(parseFloat(r.toPrecision(8)));}
+function sFmtC(n){if(n===1)return'';if(n===-1)return'−';return n<0?'−'+sFmt(-n):sFmt(n);}
+function sPolyStr1(p,v){let s='';if(p.a)s+=sFmtC(p.a)+v;if(p.b)s+=(p.b>0&&p.a?' + ':p.b<0?' − ':'')+sFmt(Math.abs(p.b));return s||'0';}
+function sPoly2Str(a,b,c,v){let s='';if(a)s+=sFmtC(a)+v+'²';if(b)s+=(b>0&&a?' + ':b<0?' − ':'')+sFmt(Math.abs(b))+v;if(c)s+=(c>0&&(a||b)?' + ':c<0?' − ':'')+sFmt(Math.abs(c));return s||'0';}
+function sPoly3Str(a,b,c,d,v){let s='';if(a)s+=sFmtC(a)+v+'³';if(b)s+=(b>0&&a?' + ':b<0?' − ':'')+sFmt(Math.abs(b))+v+'²';if(c)s+=(c>0&&(a||b)?' + ':c<0?' − ':'')+sFmt(Math.abs(c))+v;if(d)s+=(d>0&&(a||b||c)?' + ':d<0?' − ':'')+sFmt(Math.abs(d));return s||'0';}
+
+function sRender(input,result){
+  const isErr=result.type==='ERROR';
+  const lbl={LINEAR:'LINEAR EQUATION',QUADRATIC:'QUADRATIC EQUATION',CUBIC:'CUBIC EQUATION',EXPRESSION:'EXPRESSION',VERIFY:'VERIFICATION',ERROR:'INVALID INPUT'};
+  const stepsHtml=(!isErr&&result.steps)?`
+    <div class="steps-lbl">STEP BY STEP</div>
+    ${result.steps.map((s,i)=>`
+      <div class="step">
+        <div class="step-num">${i+1}</div>
+        <div class="step-body">
+          <div class="step-ttl">${s.t}</div>
+          <div class="step-math">${s.m.replace(/\n/g,'<br>')}</div>
+        </div>
+      </div>`).join('')}`:'';
+  document.getElementById('solver-out').innerHTML=`
+    <div class="result-card">
+      <div class="result-head">
+        <span class="result-label">${lbl[result.type]||result.type}</span>
+        <span class="badge ${isErr?'badge-err':'badge-ok'}">${isErr?'ERROR':'SOLVED'}</span>
+      </div>
+      <div class="result-body">
+        <div class="final-ans ${isErr?'err-ans':''}">${isErr?result.error.replace(/\n/g,'<br>'):result.answer}</div>
+        ${stepsHtml}
+      </div>
+    </div>`;
+  if(!isErr){
+    solHistory.unshift({eq:input,ans:result.answer});
+    if(solHistory.length>5)solHistory.pop();
+    const strip=document.getElementById('sol-hist-strip');
+    strip.innerHTML=`<div style="font-size:0.6rem;color:var(--muted);letter-spacing:0.15em;text-transform:uppercase;margin-bottom:4px">Recent</div>`
+      +solHistory.map(h=>`<div class="hist-item" onclick="document.getElementById('eq-input').value='${h.eq}';handleSolve()">
+        <span class="hist-eq">${h.eq}</span><span class="hist-ans">${h.ans.split(',')[0].trim()}</span></div>`).join('');
+  }
+}
+
+// ══════════════════════════════════════════════
+// VOLUME CALCULATOR
+// ══════════════════════════════════════════════
+let curShape='sphere';
+
+const shapeFields={
+  sphere:[{id:'r',label:'Radius'}],
+  cylinder:[{id:'r',label:'Radius'},{id:'h',label:'Height'}],
+  cube:[{id:'a',label:'Side length'}],
+  box:[{id:'l',label:'Length'},{id:'w',label:'Width'},{id:'h',label:'Height'}],
+  cone:[{id:'r',label:'Radius'},{id:'h',label:'Height'}],
+  pyramid:[{id:'b',label:'Base side'},{id:'h',label:'Height'}],
+  ellipsoid:[{id:'a',label:'Axis a'},{id:'b',label:'Axis b'},{id:'c',label:'Axis c'}],
+  torus:[{id:'R',label:'Major radius R'},{id:'r',label:'Minor radius r'}]
+};
+
+function selShape(s){
+  curShape=s;
+  document.querySelectorAll('.vol-shape').forEach(el=>el.classList.remove('sel'));
+  document.getElementById('vs-'+s).classList.add('sel');
+  const fields=shapeFields[s];
+  document.getElementById('vol-fields').innerHTML=fields.map(f=>`
+    <div class="field-group">
+      <label>${f.label}</label>
+      <input class="field-input" type="number" id="vf-${f.id}" placeholder="0" min="0" step="any">
+    </div>`).join('');
+  document.getElementById('vol-out').textContent='—';
+  document.getElementById('sa-out').textContent='—';
+}
+
+function gv(id){return parseFloat(document.getElementById('vf-'+id)?.value)||0;}
+
+function calcVol(){
+  const π=Math.PI;
+  let vol=0,sa=0;
+  switch(curShape){
+    case'sphere':{const r=gv('r');vol=4/3*π*r**3;sa=4*π*r**2;break;}
+    case'cylinder':{const r=gv('r'),h=gv('h');vol=π*r**2*h;sa=2*π*r*(r+h);break;}
+    case'cube':{const a=gv('a');vol=a**3;sa=6*a**2;break;}
+    case'box':{const l=gv('l'),w=gv('w'),h=gv('h');vol=l*w*h;sa=2*(l*w+l*h+w*h);break;}
+    case'cone':{const r=gv('r'),h=gv('h'),sl=Math.sqrt(r**2+h**2);vol=1/3*π*r**2*h;sa=π*r*(r+sl);break;}
+    case'pyramid':{const b=gv('b'),h=gv('h'),sl=Math.sqrt((b/2)**2+h**2);vol=1/3*b**2*h;sa=b**2+2*b*sl;break;}
+    case'ellipsoid':{const a=gv('a'),b=gv('b'),c=gv('c');vol=4/3*π*a*b*c;sa=4*π*((a**1.6*b**1.6+a**1.6*c**1.6+b**1.6*c**1.6)/3)**(1/1.6);break;}
+    case'torus':{const R=gv('R'),r=gv('r');vol=2*π**2*R*r**2;sa=4*π**2*R*r;break;}
+  }
+  const fmt=n=>parseFloat(n.toPrecision(8)).toString();
+  document.getElementById('vol-out').textContent=fmt(vol)+' units³';
+  document.getElementById('sa-out').textContent=fmt(sa)+' units²';
+}
+
+// Init volume
+selShape('sphere');
+
+// ══════════════════════════════════════════════
+// UNIT CONVERTER
+// ══════════════════════════════════════════════
+const convData={
+  length:{label:'Length',units:['meter','kilometer','centimeter','millimeter','mile','yard','foot','inch','nautical mile'],toBase:[1,1000,0.01,0.001,1609.344,0.9144,0.3048,0.0254,1852]},
+  weight:{label:'Weight',units:['kilogram','gram','milligram','pound','ounce','ton (metric)','stone'],toBase:[1,0.001,1e-6,0.453592,0.0283495,1000,6.35029]},
+  temperature:{label:'Temperature',units:['Celsius','Fahrenheit','Kelvin'],toBase:null},
+  area:{label:'Area',units:['m²','km²','cm²','acre','hectare','ft²','in²'],toBase:[1,1e6,1e-4,4046.86,10000,0.0929,6.452e-4]},
+  volume_u:{label:'Volume',units:['liter','milliliter','m³','gallon (US)','quart (US)','pint (US)','fl oz (US)','cup'],toBase:[1,0.001,1000,3.78541,0.946353,0.473176,0.0295735,0.236588]},
+  speed:{label:'Speed',units:['m/s','km/h','mph','knot','ft/s'],toBase:[1,0.277778,0.44704,0.514444,0.3048]},
+  time:{label:'Time',units:['second','minute','hour','day','week','month','year','millisecond'],toBase:[1,60,3600,86400,604800,2629800,31557600,0.001]},
+  data:{label:'Data',units:['byte','kilobyte','megabyte','gigabyte','terabyte','petabyte','bit'],toBase:[1,1000,1e6,1e9,1e12,1e15,0.125]},
+  energy:{label:'Energy',units:['joule','kilojoule','calorie','kilocalorie','watt-hour','kilowatt-hour','BTU'],toBase:[1,1000,4.184,4184,3600,3.6e6,1055.06]},
+  pressure:{label:'Pressure',units:['pascal','kilopascal','bar','atmosphere','psi','mmHg'],toBase:[1,1000,100000,101325,6894.76,133.322]},
+  angle:{label:'Angle',units:['degree','radian','gradian','arcminute','arcsecond'],toBase:[1,180/Math.PI,0.9,1/60,1/3600]}
+};
+
+let curCat='length';
+
+function selectCat(cat,btn){
+  curCat=cat;
+  document.querySelectorAll('.cat-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  populateConvUnits();
+  document.getElementById('conv-out').textContent='—';
+  document.getElementById('conv-formula').textContent='';
+}
+
+function populateConvUnits(){
+  const d=convData[curCat];
+  const from=document.getElementById('conv-from');
+  const to=document.getElementById('conv-to');
+  from.innerHTML=d.units.map((u,i)=>`<option value="${i}">${u}</option>`).join('');
+  to.innerHTML=d.units.map((u,i)=>`<option value="${i}">${u}</option>`).join('');
+  to.selectedIndex=1;
+}
+
+function swapConv(){
+  const f=document.getElementById('conv-from'),t=document.getElementById('conv-to');
+  const tmp=f.value;f.value=t.value;t.value=tmp;
+  doConvert();
+}
+
+function doConvert(){
+  const d=convData[curCat];
+  const fi=parseInt(document.getElementById('conv-from').value);
+  const ti=parseInt(document.getElementById('conv-to').value);
+  const val=parseFloat(document.getElementById('conv-val').value);
+  if(isNaN(val)){document.getElementById('conv-out').textContent='Invalid';return;}
+
+  let result;
+  if(curCat==='temperature'){
+    let c;
+    if(fi===0)c=val;else if(fi===1)c=(val-32)*5/9;else c=val-273.15;
+    if(ti===0)result=c;else if(ti===1)result=c*9/5+32;else result=c+273.15;
+  }else{
+    result=val*d.toBase[fi]/d.toBase[ti];
+  }
+
+  const fmt=Math.abs(result)>1e9||(Math.abs(result)<1e-4&&result!==0)?result.toExponential(5):parseFloat(result.toPrecision(9)).toString();
+  document.getElementById('conv-out').textContent=fmt;
+
+  // Show formula
+  const fromU=d.units[fi],toU=d.units[ti];
+  if(curCat==='temperature'){
+    const formulas={
+      '0→1':`°F = (°C × 9/5) + 32`,'1→0':`°C = (°F − 32) × 5/9`,
+      '0→2':`K = °C + 273.15`,'2→0':`°C = K − 273.15`,
+      '1→2':`K = (°F − 32) × 5/9 + 273.15`,'2→1':`°F = (K − 273.15) × 9/5 + 32`
+    };
+    document.getElementById('conv-formula').textContent=formulas[`${fi}→${ti}`]||'';
+  }else{
+    const factor=d.toBase[fi]/d.toBase[ti];
+    document.getElementById('conv-formula').textContent=`1 ${fromU} = ${parseFloat(factor.toPrecision(6))} ${toU}`;
+  }
+}
+
+// Init converter
+populateConvUnits();
+</script>
+</body>
+</html>
